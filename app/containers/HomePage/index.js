@@ -4,10 +4,8 @@
  * This is the first thing users see of our App, at the '/' route
  */
 
-import React, { useEffect, memo } from 'react';
+import React, { useState, memo } from 'react';
 import PropTypes from 'prop-types';
-import { Helmet } from 'react-helmet';
-import { FormattedMessage } from 'react-intl';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
 import { createStructuredSelector } from 'reselect';
@@ -19,85 +17,123 @@ import {
   makeSelectLoading,
   makeSelectError,
 } from 'containers/App/selectors';
-import H2 from 'components/H2';
-import ReposList from 'components/ReposList';
-import AtPrefix from './AtPrefix';
-import CenteredSection from './CenteredSection';
-import Form from './Form';
-import Input from './Input';
-import Section from './Section';
-import messages from './messages';
+import $ from 'jquery';
 import { loadRepos } from '../App/actions';
 import { changeUsername } from './actions';
 import { makeSelectUsername } from './selectors';
+// import axios from 'axios';
 import reducer from './reducer';
 import saga from './saga';
 
 const key = 'home';
 
-export function HomePage({
-  username,
-  loading,
-  error,
-  repos,
-  onSubmitForm,
-  onChangeUsername,
-}) {
+export function HomePage({ loading, error, repos }) {
   useInjectReducer({ key, reducer });
   useInjectSaga({ key, saga });
 
-  useEffect(() => {
-    // When initial state username is not null, submit the form to load repos
-    if (username && username.trim().length > 0) onSubmitForm();
-  }, []);
+  const [word, setWord] = useState('');
+  const [spanish, setSpanish] = useState(['']);
+  const [chinese, setChinese] = useState(['']);
+  const [pinyin, setPinyin] = useState(['']);
 
-  const reposListProps = {
-    loading,
-    error,
-    repos,
+  const submitForm = e => {
+    e.preventDefault();
+    languageReq('es');
+    languageReq('zh-CN');
+  };
+
+  const char2pinyin = chars => {
+    const pinyin = [];
+    chars.map(char => {
+      const settings = {
+        async: true,
+        crossDomain: true,
+        url: `https://helloacm.com/api/pinyin/?cached&s=${char}&t=1`,
+        method: 'POST',
+        headers: {},
+      };
+
+      $.ajax(settings).done(function(response) {
+        pinyin.push(response.result.join(' '));
+        setPinyin(pinyin);
+      });
+    });
+  };
+
+  const languageReq = language => {
+    const settings = {
+      async: true,
+      crossDomain: true,
+      url: 'https://google-translate1.p.rapidapi.com/language/translate/v2',
+      method: 'POST',
+      headers: {
+        'x-rapidapi-host': 'google-translate1.p.rapidapi.com',
+        'x-rapidapi-key': process.env.API_KEY,
+        'accept-encoding': 'application/gzip',
+        'content-type': 'application/x-www-form-urlencoded',
+      },
+      data: {
+        source: 'en',
+        q: word,
+        target: language,
+      },
+    };
+
+    $.ajax(settings).done(function(response) {
+      if (language === 'es') {
+        const translations = response.data.translations.map(
+          translation => translation.translatedText,
+        );
+        setSpanish(translations);
+      } else {
+        const chars = response.data.translations.map(
+          translation => translation.translatedText,
+        );
+        setChinese(chars);
+        char2pinyin(chars);
+      }
+    });
   };
 
   return (
-    <article>
-      <Helmet>
-        <title>Home Page</title>
-        <meta
-          name="description"
-          content="A React.js Boilerplate application homepage"
-        />
-      </Helmet>
-      <div>
-        <CenteredSection>
-          <H2>
-            <FormattedMessage {...messages.startProjectHeader} />
-          </H2>
-          <p>
-            <FormattedMessage {...messages.startProjectMessage} />
-          </p>
-        </CenteredSection>
-        <Section>
-          <H2>
-            <FormattedMessage {...messages.trymeHeader} />
-          </H2>
-          <Form onSubmit={onSubmitForm}>
-            <label htmlFor="username">
-              <FormattedMessage {...messages.trymeMessage} />
-              <AtPrefix>
-                <FormattedMessage {...messages.trymeAtPrefix} />
-              </AtPrefix>
-              <Input
-                id="username"
-                type="text"
-                placeholder="mxstbr"
-                value={username}
-                onChange={onChangeUsername}
-              />
-            </label>
-          </Form>
-          <ReposList {...reposListProps} />
-        </Section>
+    <React.Fragment>
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
+      >
+        <form>
+          <div className="input-group">
+            <label htmlFor="word">English Word</label>
+            <br />
+            <input
+              type="word"
+              name="word"
+              id="word"
+              value={word}
+              onChange={event => {
+                setWord(event.target.value);
+              }}
+              title="Word"
+              required
+            />
+            <button onClick={event => submitForm(event)}>Translate</button>
+          </div>
+        </form>
+        <br />
+        <br />
+        <b> SPANISH </b>
+        <div> {spanish[0]} </div>
+        <br />
+        <br />
+        <b> CHINESE </b>
+        <div> {chinese[0]} </div>
+        {pinyin[0]}
       </div>
-    </article>
+    </React.Fragment>
   );
 }
 
