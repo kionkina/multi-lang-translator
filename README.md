@@ -1,5 +1,8 @@
 A Tool For Translating Multiple Languages at Once!
 
+### Prerequisites
+A .env file with environment variable API_KEY, containing a [RapidApi](https://rapidapi.com/googlecloud/api/google-translate1) Key 
+
 ## Quick start
 
 1.  Make sure that you have Node.js v8.15.1 and npm v5 or above installed.
